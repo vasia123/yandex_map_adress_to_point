@@ -1,0 +1,102 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>Примеры. Геопоиск.</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <!--
+        Подключаем API карт 2.x
+        Параметры:
+          - load=package.full - полная сборка;
+        - lang=ru-RU - язык русский.
+    -->
+    <script src="http://api-maps.yandex.ru/2.0/?load=package.full&lang=ru-RU"
+            type="text/javascript"></script>
+
+    <script type="text/javascript">
+        // Как только будет загружен API и готов DOM, выполняем инициализацию
+        ymaps.ready(init);
+
+        function init () {
+            // Поиск координат центра Нижнего Новгорода
+            ymaps.geocode('Санкт-Петербург', { results: 1 }).then(function (res) {
+                // Выбираем первый результат геокодирования
+                var firstGeoObject = res.geoObjects.get(0);
+
+                // Создаём карту.
+                // Устанавливаем центр и коэффициент масштабирования.
+                window.myMap = new ymaps.Map("map", {
+                    center: firstGeoObject.geometry.getCoordinates(),
+                    zoom: 11
+                });
+                window.old_adress = {};
+
+            }, function (err) {
+                // Если геокодирование не удалось,
+                // сообщаем об ошибке
+                alert(err.message);
+            })
+        }
+
+        function get_by_address () {
+            var all_adress = document.getElementById('adress_area').value.split("\n");
+
+            document.getElementById('adress_area').value = '';
+            // myMap.geoObjects.removeAll()
+            for (var i=0; i<all_adress.length; i++) {
+                adress = all_adress[i];
+                if (adress!='') {
+                    // Поиск по адресу
+                    // Делаем запрос на обратное геокодирование
+                    ymaps.geocode(adress, {
+                        // Ищем в пределах области карты
+                        boundedBy: myMap.getBounds(),
+                        // Запрашиваем не более 1 результат
+                        results: 1
+                    }).then(function (res) {
+                        point = res.geoObjects;
+                        if (res.metaData.geocoder.found>0) {
+                            // Добавляем полученную коллекцию на карту
+                            coords=point.get(0).geometry.getCoordinates().join('-');
+                            if (!old_adress.hasOwnProperty('coords')) {
+                                old_adress[coords] = point;
+                                myMap.geoObjects.add(point);
+                            }
+
+                        } else {
+                            document.getElementById('adress_area').value += res.metaData.geocoder.request+"\n";
+                        }
+                    }, function (err) {
+                        document.getElementById('adress_area').value += res.metaData.geocoder.request+"\n";
+                    });
+                }
+            };
+        }
+
+    </script>
+</head>
+
+<body>
+<h2>Прямое геокодирование.</h2>
+<h4>Одна строка - один адрес. Если после нажатия поле не пустое - значит в оставшихся адресах ошибка.</h4>
+
+<textarea rows="20" cols="50" id="adress_area">
+Московское шоссе, д. 13
+ул. Зайцева, д. 38
+Обводный 40А
+Фаянсовая 22
+Швецова 12/2
+Аптекарский проспект, дом 2
+ул. Чугунная, д.2а
+Пулковское шоссе, д. 17 отдел по езналичному расчету
+ул. Лабораторная, д. 14
+</textarea>
+<button onclick="get_by_address(this);" style="vertical-align: top;">Поставить точки на карте</button>
+
+
+<div id="map" style="width: 800px; height: 800px"></div>
+</body>
+
+</html>
